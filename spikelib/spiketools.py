@@ -27,7 +27,8 @@ def chunk_spikes(spikes, start, end):
     flatten_trials
 
     """
-    chunk = spikes[(spikes >= start)*(spikes <= end)]
+    filt = np.logical_and(spikes >= start, spikes <= end)
+    chunk = spikes[filt]
     return chunk
 
 
@@ -137,7 +138,8 @@ def est_pdf(trails, time, bandwidth=0.02, norm_factor=1):
             kernel='epanechnikov', bandwidth=bandwidth).fit(spiketimes)
         est_pdf = np.exp(kde.score_samples(time))
         if est_pdf.any():
-            est_pdf = (est_pdf/est_pdf.max())*norm_factor
+            est_pdf /= np.max(est_pdf)
+            est_pdf = est_pdf * norm_factor
         else:
             est_pdf = np.zeros_like(time)
     except Exception:
@@ -379,16 +381,21 @@ def get_features_flash(response, time_resp, bound, resp_thr=0.3,
         resp_on = response[filter_on_time]
         resp_off = response[filter_off_time]
         if (resp_on.max() > resp_thr):
-            peak_idx_on = pindexes(resp_on, thres=fpeak_thr,
-                                   min_dist=fpeak_min_dist)[0]
-            fr_max_on = resp_on[peak_idx_on]
-            peaktime_on = time_resp_on[peak_idx_on]
-            latency_on = peaktime_on - start_on
-            decay_on = decay_time(resp_on, time_resp_on, peaktime_on,
-                                  fr_max_on, decrease_factor)
-            resp_index_on = response_index(resp_on, resp_off, ri_span_samples,
-                                           fr_max_on)
-            sust_index_on = sustain_index(resp_on[filter_sust_on])
+            peak_indexes = pindexes(resp_on, thres=fpeak_thr,
+                                    min_dist=fpeak_min_dist)
+            if len(peak_indexes) > 0:
+                peak_idx_on = peak_indexes[0]
+                fr_max_on = resp_on[peak_idx_on]
+                peaktime_on = time_resp_on[peak_idx_on]
+                latency_on = peaktime_on - start_on
+                decay_on = decay_time(resp_on, time_resp_on, peaktime_on,
+                                    fr_max_on, decrease_factor)
+                resp_index_on = response_index(resp_on, resp_off, ri_span_samples,
+                                            fr_max_on)
+                sust_index_on = sustain_index(resp_on[filter_sust_on])
+            else:
+                resp_index_on = 0
+                fr_max_on = 0
         else:
             peak_idx_on = 0
             fr_max_on = 0
@@ -399,16 +406,21 @@ def get_features_flash(response, time_resp, bound, resp_thr=0.3,
             sust_index_on = 0
 
         if (resp_off.max() > resp_thr):
-            peak_idx_off = pindexes(resp_off, thres=fpeak_thr,
-                                    min_dist=fpeak_min_dist)[0]
-            fr_max_off = resp_off[peak_idx_off]
-            peaktime_off = time_resp_off[peak_idx_off]
-            latency_off = peaktime_off - start_off
-            decay_off = decay_time(resp_off, time_resp_off, peaktime_off,
-                                   fr_max_off, decrease_factor)
-            resp_index_off = response_index(resp_off, resp_on, ri_span_samples,
-                                            fr_max_off)
-            sust_index_off = sustain_index(resp_off[filter_sust_off])
+            peak_indexes = pindexes(resp_off, thres=fpeak_thr,
+                                    min_dist=fpeak_min_dist)
+            if len(peak_indexes) > 0:
+                peak_idx_off = peak_indexes[0]
+                fr_max_off = resp_off[peak_idx_off]
+                peaktime_off = time_resp_off[peak_idx_off]
+                latency_off = peaktime_off - start_off
+                decay_off = decay_time(resp_off, time_resp_off, peaktime_off,
+                                    fr_max_off, decrease_factor)
+                resp_index_off = response_index(resp_off, resp_on, ri_span_samples,
+                                                fr_max_off)
+                sust_index_off = sustain_index(resp_off[filter_sust_off])
+            else:
+                resp_index_off = 0
+                fr_max_off = 0
         else:
             peak_idx_off = 0
             fr_max_off = 0
