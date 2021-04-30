@@ -3,6 +3,7 @@ import numpy as np
 from peakutils import indexes as pindexes
 from sklearn.neighbors import KernelDensity
 
+import warnings
 
 def chunk_spikes(spikes, start, end):
     """Get a subset of spike between start and end time.
@@ -172,10 +173,12 @@ def sustain_index(response):
     """
     response_max = response.max()
     response_mean = response.mean()
-    try:
-        sust_index = (response_max-response_mean)/(response_max+response_mean)
-    except ZeroDivisionError:
-        sust_index = np.nan
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        try:
+            sust_index = (response_max-response_mean)/(response_max+response_mean)
+        except (ZeroDivisionError, RuntimeWarning):
+            sust_index = np.nan
     return sust_index
 
 
@@ -211,17 +214,19 @@ def bias_index(fr_max_on, fr_max_off, thr=0.65):
     est_pdf
 
     """
-    try:
-        bias_index = (fr_max_on-fr_max_off)/float(fr_max_on+fr_max_off)
-        if bias_index > thr:
-            response_type = 1
-        elif bias_index < -thr:
-            response_type = 2
-        else:
-            response_type = 3
-    except ZeroDivisionError:
-        response_type = 0
-        bias_index = np.nan
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        try:
+            bias_index = (fr_max_on-fr_max_off)/float(fr_max_on+fr_max_off)
+            if bias_index > thr:
+                response_type = 1
+            elif bias_index < -thr:
+                response_type = 2
+            else:
+                response_type = 3
+        except (ZeroDivisionError, RuntimeWarning):
+            response_type = 0
+            bias_index = np.nan
 
     return (bias_index, response_type)
 
@@ -262,10 +267,13 @@ def response_index(response, prev_response, ri_span, max_resp=None):
         max_resp = np.amax(response)
     avg_resp = response[:ri_span].mean()
     avg_prev_resp = prev_response[-ri_span:].mean()
-    try:
-        resp_index = (max_resp-avg_prev_resp)/(max_resp+avg_resp)
-    except ZeroDivisionError:
-        resp_index = np.nan
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        try:
+            resp_index = (max_resp-avg_prev_resp)/(max_resp+avg_resp)
+        except (ZeroDivisionError, RuntimeWarning):
+            resp_index = np.nan
 
     return resp_index
 
